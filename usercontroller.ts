@@ -1,69 +1,93 @@
-import { users } from "../src/Schema/user";
-import { eq }   from "drizzle-orm";
 import { Request, Response } from "express";
-// import { db } from "../db"; // Adjust the path as needed to where your db instance is exported
+import {
+  createUserService,
+  getAllUsersService,
+  getUserByIdService,
+  updateUserService,
+  deleteUserService,
+} from "../services/user.services";
 
 
 export const createUser = async (req: Request, res: Response) => {
-   try{
-  const   {  name, email} = req.body;
-  const result = await  db.insert(users).values ({ name,email}).returning();
-  res.status(201).json({ message: "User created successfully", user: result[0] });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-
-export const getAllUsers = async (req, res) => {
   try {
-    const result = await db.select().from(users);
-    res.status(200).json(result);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-
-export const getUserById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const result = await db.select().from(users).where(eq(users.id, Number(id)));
-    if (result.length === 0) return res.status(404).json({ message: "User not found" });
-    res.status(200).json(result[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-
-export const updateUser = async (req, res) => {
-  try {
-    const { id } = req.params;
     const { name, email } = req.body;
 
-    const result = await db
-      .update(users)
-      .set({ name, email })
-      .where(eq(users.id, Number(id)))
-      .returning();
+    if (!name || !email) {
+      return res.status(400).json({ message: "Name and email are required" });
+    }
 
-    res.status(200).json({ message: "User updated", user: result[0] });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const user = await createUserService(name, email);
+    res.status(201).json({ message: "User created successfully", user });
+  } catch (error: any) {
+    console.error("Error creating user:", error);
+    res.status(500).json({ message: "Error creating user", error: error.message });
   }
 };
 
 
-export const deleteUser = async (req, res) => {
+export const getAllUsers = async (_req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    await db.delete(users).where(eq(users.id, Number(id)));
-    res.status(200).json({ message: "User deleted successfully" });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    const users = await getAllUsersService();
+    res.status(200).json(users);
+  } catch (error: any) {
+    console.error("Error fetching users:", error);
+    res.status(500).json({ message: "Error fetching users", error: error.message });
   }
 };
 
 
- 
+export const getUserById = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const user = await getUserByIdService(id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(user);
+  } catch (error: any) {
+    console.error("Error fetching user:", error);
+    res.status(500).json({ message: "Error fetching user", error: error.message });
+  }
+};
+
+
+export const updateUser = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const { name, email } = req.body;
+
+    if (!name || !email) {
+      return res.status(400).json({ message: "Name and email are required" });
+    }
+
+    const updatedUser = await updateUserService(id, name, email);
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ message: "User updated successfully", updatedUser });
+  } catch (error: any) {
+    console.error("Error updating user:", error);
+    res.status(500).json({ message: "Error updating user", error: error.message });
+  }
+};
+
+
+export const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const deletedUser = await deleteUserService(id);
+
+    if (!deletedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ message: "User deleted successfully", deletedUser });
+  } catch (error: any) {
+    console.error("Error deleting user:", error);
+    res.status(500).json({ message: "Error deleting user", error: error.message });
+  }
+};
